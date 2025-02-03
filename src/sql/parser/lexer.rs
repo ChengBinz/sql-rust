@@ -131,7 +131,6 @@ impl Keyword {
             Keyword::Null => "NULL",
             Keyword::Primary => "PRIMARY",
             Keyword::Key => "KEY",
-            
         }
     }
 }
@@ -140,7 +139,6 @@ impl Display for Keyword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.to_str())
     }
-    
 }
 
 // 词法分析 Lexer 定义

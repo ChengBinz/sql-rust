@@ -1,7 +1,5 @@
 use crate::sql::types::DataType;
 
-
-
 // Abstract Syntax Tree 抽象语法树定义
 #[derive(Debug, PartialEq)]
 pub enum Statement {

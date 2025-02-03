@@ -3,8 +3,10 @@ use std::iter::Peekable;
 use ast::Column;
 use lexer::{Keyword, Lexer, Token};
 
-use crate::{error::{Error, Result}, sql::types::DataType};
-
+use crate::{
+    error::{Error, Result},
+    sql::types::DataType,
+};
 
 pub mod ast;
 mod lexer;
@@ -22,13 +24,16 @@ impl<'a> Parser<'a> {
     }
 
     // 解析，获取到抽象语法树
-    fn parse(&mut self) -> Result<ast::Statement> {
+    pub fn parse(&mut self) -> Result<ast::Statement> {
         let stmt = self.parse_statement()?;
         // 期望 sql 语句的最后有个分号
         self.next_expect(Token::Semicolon)?;
         // 分号之后不能有其他的符号
         if let Some(token) = self.peek()? {
-            return Err(Error::Parse(format!("[Parser] Unexpected token {:?}", token)));
+            return Err(Error::Parse(format!(
+                "[Parser] Unexpected token {:?}",
+                token
+            )));
         }
         Ok(stmt)
     }
@@ -49,9 +54,15 @@ impl<'a> Parser<'a> {
         match self.next()? {
             Token::Keyword(Keyword::Create) => match self.next()? {
                 Token::Keyword(Keyword::Table) => self.parse_ddl_create_table(),
-                token => Err(Error::Parse(format!("[Parser] Unexpected token {:?}", token))),
+                token => Err(Error::Parse(format!(
+                    "[Parser] Unexpected token {:?}",
+                    token
+                ))),
             },
-            token => Err(Error::Parse(format!("[Parser] Unexpected token {:?}", token))),
+            token => Err(Error::Parse(format!(
+                "[Parser] Unexpected token {:?}",
+                token
+            ))),
         }
     }
 
@@ -63,7 +74,9 @@ impl<'a> Parser<'a> {
 
         // 表名
         let table_name = self.next_ident()?;
-        Ok(ast::Statement::Select { table_name: table_name })
+        Ok(ast::Statement::Select {
+            table_name: table_name,
+        })
     }
 
     // 解析 Insert 语句
@@ -83,7 +96,10 @@ impl<'a> Parser<'a> {
                     Token::CloseParen => break,
                     Token::Comma => {}
                     token => {
-                        return Err(Error::Parse(format!("[Parser] Unexpected token {:?}", token)));
+                        return Err(Error::Parse(format!(
+                            "[Parser] Unexpected token {:?}",
+                            token
+                        )));
                     }
                 }
             }
@@ -105,7 +121,10 @@ impl<'a> Parser<'a> {
                     Token::CloseParen => break,
                     Token::Comma => {}
                     token => {
-                        return Err(Error::Parse(format!("[Parser] Unexpected token {:?}", token)));
+                        return Err(Error::Parse(format!(
+                            "[Parser] Unexpected token {:?}",
+                            token
+                        )));
                     }
                 }
             }
@@ -115,7 +134,11 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(ast::Statement::Insert { table_name, columns, values,})
+        Ok(ast::Statement::Insert {
+            table_name,
+            columns,
+            values,
+        })
     }
 
     // 解析 Create Table 语句
@@ -136,7 +159,10 @@ impl<'a> Parser<'a> {
         }
 
         self.next_expect(Token::CloseParen)?;
-        Ok(ast::Statement::CreateTable { name: table_name, columns,})
+        Ok(ast::Statement::CreateTable {
+            name: table_name,
+            columns,
+        })
     }
 
     // 解析列信息
@@ -144,11 +170,22 @@ impl<'a> Parser<'a> {
         let mut column = Column {
             name: self.next_ident()?,
             data_type: match self.next()? {
-                Token::Keyword(Keyword::Int) | Token::Keyword(Keyword::Integer) => DataType::Interger,
-                Token::Keyword(Keyword::Bool) | Token::Keyword(Keyword::Boolean) => DataType::Boolean,
+                Token::Keyword(Keyword::Int) | Token::Keyword(Keyword::Integer) => {
+                    DataType::Interger
+                }
+                Token::Keyword(Keyword::Bool) | Token::Keyword(Keyword::Boolean) => {
+                    DataType::Boolean
+                }
                 Token::Keyword(Keyword::Float) | Token::Keyword(Keyword::Double) => DataType::Float,
-                Token::Keyword(Keyword::String) | Token::Keyword(Keyword::Varchar) | Token::Keyword(Keyword::Text) => DataType::String,
-                token => return Err(Error::Parse(format!("[Parser] Unexpected token {:?}", token))),
+                Token::Keyword(Keyword::String)
+                | Token::Keyword(Keyword::Varchar)
+                | Token::Keyword(Keyword::Text) => DataType::String,
+                token => {
+                    return Err(Error::Parse(format!(
+                        "[Parser] Unexpected token {:?}",
+                        token
+                    )))
+                }
             },
             nullable: None,
             default: None,
@@ -189,7 +226,10 @@ impl<'a> Parser<'a> {
             Token::Keyword(Keyword::False) => ast::Consts::Boolean(false).into(),
             Token::Keyword(Keyword::Null) => ast::Consts::Null.into(),
             t => {
-                return Err(Error::Parse(format!("[Parser] Unexpected expression token {:?}", t)));
+                return Err(Error::Parse(format!(
+                    "[Parser] Unexpected expression token {:?}",
+                    t
+                )));
             }
         })
     }
@@ -199,21 +239,28 @@ impl<'a> Parser<'a> {
     }
 
     fn next(&mut self) -> Result<Token> {
-        self.lexer.next().unwrap_or_else(|| Err(Error::Parse(format!("[Parser] Unexpected end of input")))
-        )
+        self.lexer
+            .next()
+            .unwrap_or_else(|| Err(Error::Parse(format!("[Parser] Unexpected end of input"))))
     }
 
     fn next_ident(&mut self) -> Result<String> {
         match self.next()? {
             Token::Ident(ident) => Ok(ident),
-            token => Err(Error::Parse(format!("[Parser] Expected ident, got token {:?}", token))),
+            token => Err(Error::Parse(format!(
+                "[Parser] Expected ident, got token {:?}",
+                token
+            ))),
         }
     }
 
-    fn next_expect(&mut self, expect : Token) -> Result<()> {
+    fn next_expect(&mut self, expect: Token) -> Result<()> {
         let token = self.next()?;
         if token != expect {
-            return Err(Error::Parse(format!("[Parser] Expected {:?}, got token {:?}", expect, token)));
+            return Err(Error::Parse(format!(
+                "[Parser] Expected {:?}, got token {:?}",
+                expect, token
+            )));
         }
         Ok(())
     }
@@ -325,7 +372,14 @@ mod tests {
     fn test_parser_select() -> Result<()> {
         let sql = "select * from tbl1;";
         let stmt = Parser::new(sql).parse()?;
-        println!("{:?}", stmt);
+
+        assert_eq!(
+            stmt,
+            ast::Statement::Select {
+                table_name: "tbl1".to_string()
+            }
+        );
+
         Ok(())
     }
 }
