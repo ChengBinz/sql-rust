@@ -58,12 +58,12 @@ impl TransactionState {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum MvccKey {
     NextVersion,
-    TxnActive(Version),
-    TxnWrite(Version, Vec<u8>),
-    Version(Vec<u8>, Version),
+    TxnAcvtive(Version),
+    TxnWrite(Version, #[serde(with = "serde_bytes")] Vec<u8>),
+    Version(#[serde(with = "serde_bytes")] Vec<u8>, Version),
 }
 
 // NextVersion 0
@@ -85,6 +85,7 @@ pub enum MvccKeyPrefix {
     NextVersion,
     TxnAcvtive,
     TxnWrite(Version),
+    Version(#[serde(with = "serde_bytes")] Vec<u8>),
 }
 
 impl MvccKeyPrefix {
@@ -113,7 +114,7 @@ impl<E: Engine> MvccTransaction<E> {
         let active_versions = Self::scan_active(&mut engine)?;
 
         // 当前事务加入到活跃事务列表中
-        engine.set(MvccKey::TxnActive(next_version).encode(), vec![])?;
+        engine.set(MvccKey::TxnAcvtive(next_version).encode(), vec![])?;
 
         Ok(Self {
             engine: eng.clone(),
@@ -153,7 +154,7 @@ impl<E: Engine> MvccTransaction<E> {
         }
 
         // 从活跃事务列表中删除
-        engine.delete(MvccKey::TxnActive(self.state.version).encode())
+        engine.delete(MvccKey::TxnAcvtive(self.state.version).encode())
     }
 
     pub fn rollback(&self) -> Result<()> {
@@ -262,7 +263,7 @@ impl<E: Engine> MvccTransaction<E> {
         let mut iter = engine.scan_prefix(MvccKeyPrefix::TxnAcvtive.encode());
         while let Some((key, _)) = iter.next().transpose()? {
             match MvccKey::decode(key.clone())? {
-                MvccKey::TxnActive(version) => {
+                MvccKey::TxnAcvtive(version) => {
                     active_versions.insert(version);
                 }
                 _ => {
